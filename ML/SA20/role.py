@@ -1,43 +1,56 @@
 import pandas as pd
 
-# Load dataset
+# ================================
+# 🧾 1. Load Dataset
+# ================================
 df = pd.read_csv('sa20.csv')
 
-# Convert numeric columns safely
-for col in ['Bat Av', 'Wkts', 'St']:
+# ================================
+# 🧹 2. Clean & Convert Numeric Columns
+# ================================
+for col in ['Bat Av', 'Wkts', 'St', 'Runs']:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-# --- Define function to classify player role ---
+# ================================
+# 🧩 3. Define Role Assignment Function
+# ================================
 def assign_role(row):
     batting_avg = row['Bat Av']
+    runs = row['Runs']
     wickets = row['Wkts']
-    bowling_style = str(row.get('Bowling Style', '')).strip().lower()
     stumpings = row['St']
+    bowling_style = str(row.get('Bowling Style', '')).strip().lower()
 
-    # 1️⃣ Wicketkeeper Batter
-    if stumpings > 0:
-        return 'Wicketkeeper Batter'
+    # 1️⃣ Wicketkeeper — more than 20 stumpings
+    if stumpings > 20:
+        return 'Wicketkeeper'
 
-    # 2️⃣ Batter (no bowling style or few wickets)
-    if (bowling_style == '' or bowling_style == '-' or 'none' in bowling_style) and batting_avg >= 20:
+    # 2️⃣ Batter — strong batting stats and runs
+    if runs >= 1000 and batting_avg >= 15 and wickets < 30:
         return 'Batter'
 
-    # 3️⃣ Bowler (low batting avg but many wickets)
-    if bowling_style not in ['', '-'] and batting_avg < 15 and wickets >= 50:
-        return 'Bowler'
+    # 3️⃣ Bowler — good bowling stats, weak batting
+    if (wickets >= 50) or any(word in bowling_style for word in ['bowler', 'fast', 'medium', 'spin']):
+        if batting_avg < 15:
+            return 'Bowler'
 
-    # 4️⃣ All-rounder (both bat & bowl effectively)
-    if bowling_style not in ['', '-'] and batting_avg >= 15 and wickets >= 50:
+    # 4️⃣ All-rounder — decent both bat & ball
+    if batting_avg >= 15 and wickets >= 30:
         return 'All-rounder'
 
     # 5️⃣ Default fallback
     return 'All-rounder'
 
-# Apply function to assign roles
+# ================================
+# 🧠 4. Apply Function
+# ================================
 df['Role'] = df.apply(assign_role, axis=1)
 
-# Save updated CSV (overwrite as SA20.csv)
+# ================================
+# 💾 5. Save Updated File
+# ================================
 df.to_csv('SA20.csv', index=False)
 
 print("✅ Roles assigned successfully — saved as 'SA20.csv'")
+print(df['Role'].value_counts())

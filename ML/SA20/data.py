@@ -88,7 +88,7 @@ for player in players:
     
 # -------------------- Save to CSV --------------------
 df = pd.DataFrame(results)
-df.to_csv("SA20_Stats.csv", index=False)
+df.to_csv("SA20_u.csv", index=False)
 print("Scraping complete. Data saved to player_stats.csv.")
 
 # -------------------- Cleanup --------------------
