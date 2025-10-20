@@ -52,24 +52,39 @@ def fetch_player_stats(player_name):
 
     return stats
 
+
 # ---------------- Run for all players ----------------
-df = pd.read_csv("sa20_players.csv")  # must have Player,Span,Team
+df = pd.read_csv("SA20_u.csv")
+
+# Clean column names (remove spaces and fix casing)
+df.rename(columns=lambda x: x.strip(), inplace=True)
+if "Team Name" in df.columns:
+    df.rename(columns={"Team Name": "Team"}, inplace=True)
+if "team" in df.columns:
+    df.rename(columns={"team": "Team"}, inplace=True)
+
+# Verify columns exist
+print("Columns found:", df.columns.tolist())
+
 results = []
 
 for _, row in df.iterrows():
-    player = row["Player"]
+    player = row.get("Player", "").strip()
+    span = row.get("Span", "")
+    team = row.get("Team", "Unknown")
+
     extra_stats = fetch_player_stats(player)
     results.append({
         "Player": player,
-        "Span": row["Span"],
-        "Team": row["Team"],
+        "Span": span,
+        "Team": team,
         "Country": extra_stats["Country"],
         "SR": extra_stats["SR"],
         "Bowling Style": extra_stats["Bowling Style"]
     })
 
 out_df = pd.DataFrame(results)
-out_df.to_csv("sa20_strike.csv", index=False)
-print("✅ Scraping complete. Data saved to players_stats.csv")
+out_df.to_csv("sa20_stri.csv", index=False)
+print("✅ Scraping complete. Data saved to sa20_stri.csv")
 
 driver.quit()

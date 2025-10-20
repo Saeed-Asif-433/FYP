@@ -15,7 +15,7 @@ options.headless = False  # Set to True for headless mode
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 # -------------------- Read Players --------------------
-with open("SA20.csv", "r") as file:
+with open("playerlist.csv", "r") as file:
     players = file.read().splitlines()
 
 # -------------------- Fetch Function --------------------
