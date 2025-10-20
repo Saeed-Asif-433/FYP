@@ -13,15 +13,18 @@ from webdriver_manager.chrome import ChromeDriverManager
 # Setup Chrome Driver
 # ===============================
 options = Options()
-options.headless = False  # Set True to hide browser window
+options.headless = False  # set True if you want headless
 options.add_argument("--window-size=1920,1080")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 wait = WebDriverWait(driver, 15)
 
 # ===============================
-# Base URL
+# Base URL (BBL 2024-25 squads page)
 # ===============================
-base_url = "https://www.espncricinfo.com/series/international-league-t20-2024-25-1462172/abu-dhabi-knight-riders-squad-1462282/series-squads"
+base_url = "https://www.espncricinfo.com/series/big-bash-league-2024-25-1443056/adelaide-strikers-squad-1464270/series-squads"
 driver.get(base_url)
 time.sleep(4)
 
@@ -30,16 +33,17 @@ time.sleep(4)
 # ===============================
 teams = []
 team_links = driver.find_elements(By.XPATH, "//div[@class='ds-p-0']/a")
+
 for link in team_links:
     team_name = link.text.replace(" Squad", "").strip()
-    team_url = link.get_attribute("href")
+    team_url  = link.get_attribute("href")
     if team_name and "squad" in team_url.lower():
         teams.append({"team_name": team_name, "team_url": team_url})
 
-print(f"✅ Found {len(teams)} team pages.")
+print(f"✅ Found {len(teams)} teams in BBL 2024-25.")
 
 # ===============================
-# Function to scrape players
+# Function to scrape players for a team
 # ===============================
 def scrape_team(team_name, team_url):
     driver.get(team_url)
@@ -50,7 +54,7 @@ def scrape_team(team_name, team_url):
             (By.XPATH, "//a[contains(@href, '/cricketers/')]")
         ))
     except:
-        print(f"⚠️ Timeout loading {team_name}")
+        print(f"⚠️ Timeout loading team: {team_name}")
         return []
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -68,7 +72,7 @@ def scrape_team(team_name, team_url):
             players.append({
                 "Player Name": name,
                 "Role": role,
-                "Team": team_name  # ✅ Clean team name (no "Squad")
+                "Team": team_name
             })
 
     print(f"➡️ {team_name}: {len(players)} players scraped.")
@@ -82,17 +86,14 @@ for team in teams:
     all_players.extend(scrape_team(team["team_name"], team["team_url"]))
 
 # ===============================
-# Clean data — remove bad rows
+# Clean & Save Data
 # ===============================
 df = pd.DataFrame(all_players)
-df = df[df["Team"].str.lower() != "squad"]  # remove "Squad" only rows
+df = df[df["Team"].str.lower() != "squad"]
 df["Team"] = df["Team"].str.replace(" Squad", "", regex=False).str.strip()
 
-# ===============================
-# Save clean CSV
-# ===============================
-df.to_csv("ilt20_players.csv", index=False, encoding="utf-8-sig")
+df.to_csv("bbl2024_25_players.csv", index=False, encoding="utf-8-sig")
 
-print(f"\n🎯 Done! {len(df)} valid players saved to ilt20_players.csv")
+print(f"\n🎯 Done! {len(df)} players saved to bbl2024_25_players.csv")
 
 driver.quit()
