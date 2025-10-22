@@ -1,18 +1,19 @@
 import time
 import pandas as pd
+from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-# =====================================================
-# 1️⃣ Setup Chrome Driver
-# =====================================================
+# ===============================
+# Setup Chrome Driver
+# ===============================
 options = Options()
-options.headless = False  # set True to hide browser
+options.headless = False  # set True if you don’t want to see browser
 options.add_argument("--window-size=1920,1080")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
@@ -20,87 +21,79 @@ options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 wait = WebDriverWait(driver, 15)
 
-# =====================================================
-# 2️⃣ Open initial team page (Durban’s Super Giants)
-# =====================================================
-start_url = "https://www.espncricinfo.com/series/sa20-2024-25-1437327/durban-s-super-giants-squad-1449733/series-squads"
-driver.get(start_url)
+# ===============================
+# Base URL (SA20 2024-25 squads page)
+# ===============================
+base_url = "https://www.espncricinfo.com/series/sa20-2024-25-1437327/durban-s-super-giants-squad-1449733/series-squads"
+driver.get(base_url)
 time.sleep(4)
 
-# =====================================================
-# 3️⃣ Get all team links from squads page
-# =====================================================
-try:
-    wait.until(EC.presence_of_all_elements_located((By.XPATH, "//div[@class='ds-p-0']/a")))
-    team_links = driver.find_elements(By.XPATH, "//div[@class='ds-p-0']/a")
-except:
-    print("⚠️ Could not find team list container.")
-    driver.quit()
-    exit()
-
+# ===============================
+# Collect all team links
+# ===============================
 teams = []
+team_links = driver.find_elements(By.XPATH, "//div[@class='ds-p-0']/a")
+
 for link in team_links:
-    name = link.text.replace(" Squad", "").strip()
-    href = link.get_attribute("href")
-    if name and href:
-        teams.append({"team_name": name, "team_url": href})
+    team_name = link.text.replace(" Squad", "").strip()
+    team_url = link.get_attribute("href")
+    if team_name and "squad" in team_url.lower():
+        teams.append({"team_name": team_name, "team_url": team_url})
 
-print(f"✅ Found {len(teams)} teams.")
+print(f"✅ Found {len(teams)} SA20 teams.\n")
 
-# =====================================================
-# 4️⃣ Scrape player list for each team
-# =====================================================
+# ===============================
+# Function to scrape players for a team
+# ===============================
 def scrape_team(team_name, team_url):
     driver.get(team_url)
     time.sleep(3)
 
     try:
         wait.until(EC.presence_of_all_elements_located(
-            (By.XPATH, "//div[contains(@class,'ds-flex') and contains(@class,'ds-flex-col') and contains(@class,'ds-p-4')]//a[contains(@href,'/cricketers/')]")
+            (By.XPATH, "//a[contains(@href, '/cricketers/')]")
         ))
     except:
-        print(f"⚠️ Timeout loading {team_name}")
+        print(f"⚠️ Timeout loading team: {team_name}")
         return []
 
-    player_elements = driver.find_elements(
-        By.XPATH, "//div[contains(@class,'ds-flex') and contains(@class,'ds-flex-col') and contains(@class,'ds-p-4')]"
-    )
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    player_blocks = soup.find_all("div", class_="ds-relative ds-flex ds-flex-row ds-space-x-4 ds-p-3")
 
     players = []
-    for card in player_elements:
-        try:
-            player_name = card.find_element(By.XPATH, ".//a[contains(@href,'/cricketers/')]").text.strip()
-            try:
-                role = card.find_element(By.XPATH, ".//p[contains(@class,'ds-text-tight-s')]").text.strip()
-            except:
-                role = ""
+    for block in player_blocks:
+        name_tag = block.find("a", class_="ds-inline-flex ds-items-start ds-leading-none")
+        name = name_tag.get_text(strip=True) if name_tag else ""
 
-            if player_name:
-                players.append({
-                    "Player": player_name,
-                    "Team": team_name,
-                    "Role": role
-                })
-        except:
-            continue
+        role_tag = block.find("p", class_="ds-text-tight-s ds-font-regular ds-mb-2 ds-mt-1")
+        role = role_tag.get_text(strip=True) if role_tag else ""
+
+        if name:
+            players.append({
+                "Player Name": name,
+                "Role": role,
+                "Team": team_name
+            })
 
     print(f"➡️ {team_name}: {len(players)} players scraped.")
     return players
 
-# =====================================================
-# 5️⃣ Loop through all teams
-# =====================================================
+# ===============================
+# Scrape all teams
+# ===============================
 all_players = []
 for team in teams:
     all_players.extend(scrape_team(team["team_name"], team["team_url"]))
 
-# =====================================================
-# 6️⃣ Save results
-# =====================================================
+# ===============================
+# Clean & Save Data
+# ===============================
 df = pd.DataFrame(all_players)
-df.to_csv("sa20_squads.csv", index=False, encoding="utf-8-sig")
+df = df[df["Team"].str.lower() != "squad"]
+df["Team"] = df["Team"].str.replace(" Squad", "", regex=False).str.strip()
 
-print(f"\n🎉 Done! {len(df)} players saved to sa20_squads.csv")
+df.to_csv("sa20_2024_25_players.csv", index=False, encoding="utf-8-sig")
+
+print(f"\n🎯 Done! {len(df)} players saved to sa20_2024_25_players.csv")
 
 driver.quit()
-

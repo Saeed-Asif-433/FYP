@@ -18,7 +18,7 @@ def fetch_player_stats(player_name):
     driver.get(url)
     time.sleep(2)
 
-    stats = {"Player": player_name, "Country": "", "SR": "", "Bowling Style": ""}
+    stats = {"Player": player_name, "SR": "", "Bowling Style": ""}
 
     # Bowling Style
     try:
@@ -26,14 +26,6 @@ def fetch_player_stats(player_name):
         text = panel_body.text
         if "Bowling style:" in text:
             stats["Bowling Style"] = text.split("Bowling style:")[1].split("\n")[0].strip()
-    except:
-        pass
-
-    # Country = first team from "Teams played for"
-    try:
-        teams_panel = driver.find_element(By.XPATH, "//div[@class='panel-heading' and text()='All T20']/following-sibling::div")
-        first_team = teams_panel.find_element(By.TAG_NAME, "a").text.strip()
-        stats["Country"] = first_team
     except:
         pass
 
@@ -71,14 +63,12 @@ results = []
 for _, row in df.iterrows():
     player = row.get("Player", "").strip()
     span = row.get("Span", "")
-    team = row.get("Team", "Unknown")
-
+    
     extra_stats = fetch_player_stats(player)
     results.append({
         "Player": player,
         "Span": span,
         "Team": team,
-        "Country": extra_stats["Country"],
         "SR": extra_stats["SR"],
         "Bowling Style": extra_stats["Bowling Style"]
     })

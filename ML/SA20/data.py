@@ -7,7 +7,6 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager  # <-- new import
 
 # -------------------- Setup --------------------
-# Chrome options
 options = Options()
 options.headless = False  # Set to True for headless mode
 
@@ -30,7 +29,6 @@ def fetch_player_stats(player_name):
 
         stats = {
             "Player": player_name,
-            "Span": "", 
             "Runs": "",
             "HS": "",
             "Bat Av": "",
@@ -54,9 +52,8 @@ def fetch_player_stats(player_name):
                     key = key.strip()
                     value = value.strip()
 
-                    # Map to expected keys
-                    if key == "Span": stats["Span"] = value
-                    elif key == "Runs": stats["Runs"] = value
+                    # Map to expected keys (ignore Span)
+                    if key == "Runs": stats["Runs"] = value
                     elif key == "HS": stats["HS"] = value
                     elif key in ["Bat Av", "Bat Avg"]: stats["Bat Av"] = value
                     elif key == "100": stats["100"] = value
@@ -76,8 +73,9 @@ def fetch_player_stats(player_name):
         print(f"Error fetching {player_name}: {e}")
         return {
             "Player": player_name,
-            "Span": "N/A", "Runs": "N/A", "HS": "N/A", "Bat Av": "N/A", "100": "N/A",
-            "Wkts": "N/A", "BBI": "N/A", "Bowl Av": "N/A", "5": "N/A", "Ct": "N/A", "St": "N/A", "Ave Diff": "N/A"
+            "Runs": "N/A", "HS": "N/A", "Bat Av": "N/A", "100": "N/A",
+            "Wkts": "N/A", "BBI": "N/A", "Bowl Av": "N/A", "5": "N/A",
+            "Ct": "N/A", "St": "N/A", "Ave Diff": "N/A"
         }
 
 # -------------------- Scrape Loop --------------------
@@ -89,7 +87,7 @@ for player in players:
 # -------------------- Save to CSV --------------------
 df = pd.DataFrame(results)
 df.to_csv("SA20_u.csv", index=False)
-print("Scraping complete. Data saved to player_stats.csv.")
+print("✅ Scraping complete. Data saved to SA20_u.csv.")
 
 # -------------------- Cleanup --------------------
 driver.quit()
